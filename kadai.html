@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoogleBooksAPIでAjaxを学ぶ</title>
+    <style>
+        td {
+            border-bottom: 1px solid #ccc;
+            border-left: 1px solid #ccc;
+        }
+        #pagination {
+            margin-top: 20px;
+        }
+        #loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Book検索</h1>
+    <div>
+        <input type="text" id="key" placeholder="キーワード">
+        <input type="text" id="author" placeholder="著者">
+        <input type="number" id="year" placeholder="出版年">
+        <button id="send">検索</button>
+    </div>
+    <div id="loading">検索中...</div>
+    <div>
+        <table id="list">
+            <tr>
+                <td style="width:400px">書籍名</td>
+                <td style="width:200px">出版社</td>
+                <td style="width:400px">画像</td>
+            </tr>
+        </table>
+    </div>
+    <div id="pagination">
+        <button id="prev">前へ</button>
+        <span id="page-info"></span>
+        <button id="next">次へ</button>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+    let currentPage = 1;
+    const itemsPerPage = 10;
+
+    function buildSearchQuery() {
+        let query = $("#key").val();
+        if ($("#author").val()) {
+            query += `+inauthor:${$("#author").val()}`;
+        }
+        if ($("#year").val()) {
+            query += `+inpublisher:${$("#year").val()}`;
+        }
+        return encodeURIComponent(query);
+    }
+
+    function showLoading() {
+        $("#loading").show();
+        $("#list").hide();
+    }
+
+    function hideLoading() {
+        $("#loading").hide();
+        $("#list").show();
+    }
+
+    function fetchBooks(page) {
+        showLoading();
+        const startIndex = (page - 1) * itemsPerPage;
+        const url = `https://www.googleapis.com/books/v1/volumes?q=${buildSearchQuery()}&startIndex=${startIndex}&maxResults=${itemsPerPage}`;
+        
+        $.ajax({
+            url: url,
+            dataType: "json"
+        }).done(function(data) {
+            console.log(data);
+            const len = data.items ? data.items.length : 0;
+            let html = '';
+            for(let i=0; i<len; i++){
+                const publisher = data.items[i].volumeInfo.publisher || "出版社（不明）";
+                const thumbnail = data.items[i].volumeInfo.imageLinks ? data.items[i].volumeInfo.imageLinks.thumbnail : '';
+                html += `
+                    <tr>
+                        <td>${data.items[i].volumeInfo.title}</td>
+                        <td>${publisher}</td>
+                        <td>
+                            <a target="_blank" href="${data.items[i].volumeInfo.infoLink}">
+                                <img src="${thumbnail}">
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            }
+            $("#list").find("tr:gt(0)").remove();
+            $("#list").append(html).hide().fadeIn(1000);
+            updatePagination(data.totalItems);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.error("API request failed:", textStatus, errorThrown);
+            $("#list").find("tr:gt(0)").remove();
+            $("#list").append("<tr><td colspan='3'>検索中にエラーが発生しました。再度お試しください。</td></tr>");
+        }).always(function() {
+            hideLoading();
+        });
+    }
+
+    function updatePagination(totalItems) {
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        $("#page-info").text(`${currentPage} / ${totalPages}`);
+        $("#prev").prop("disabled", currentPage === 1);
+        $("#next").prop("disabled", currentPage === totalPages);
+    }
+
+    function validateInput() {
+        if ($("#key").val().trim() === "") {
+            alert("検索キーワードを入力してください。");
+            return false;
+        }
+        return true;
+    }
+
+    function startSearch() {
+        if (validateInput()) {
+            currentPage = 1;
+            fetchBooks(currentPage);
+        }
+    }
+
+    // 検索ボタンクリック時の処理
+    $("#send").on("click", startSearch);
+
+    // Enterキー押下時の処理
+    $("#key, #author, #year").on("keypress", function(e) {
+        if (e.which === 13) {  // Enterキーのキーコードは13
+            e.preventDefault();  // フォーム送信を防止
+            startSearch();
+        }
+    });
+
+    $("#prev").on("click", function() {
+        if (currentPage > 1) {
+            currentPage--;
+            fetchBooks(currentPage);
+        }
+    });
+
+    $("#next").on("click", function() {
+        currentPage++;
+        fetchBooks(currentPage);
+    });
+    </script>
+</body>
+</html>

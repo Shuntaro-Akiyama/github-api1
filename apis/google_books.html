@@ -1,0 +1,26 @@
+<!-- //const url = "https://www.googleapis.com/books/v1/volumes?q=javascript"; -->
+ <!DOCTYPE html>
+ <html lang="ja">
+ <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoogleBooksAPIでAjaxを学ぶ</title>
+ </head>
+ <body>
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+    <script>
+
+    const url = "https://www.googleapis.com/books/v1/volumes?q="+$("#key").val();
+    $.ajax({   //送信情報
+            url: url,
+            type: "get",
+            cache: false,
+            dataType: "json"
+        }).done(function(data){   //成功したら実行（dataのところは変数なのでaでもbでもいい）
+
+            console.log(data);
+        });
+    </script>
+ </body>
+ </html>
